@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2563eb">
+<title>Class 9 Battle Quiz — 4 Players</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#172554;background:#eff4ff;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(140deg,#eaf1ff,#f8fafc);min-height:100vh}
+header{background:#fff;text-align:center;padding:18px 12px;border-bottom:1px solid #dbeafe}h1{font-size:clamp(1.35rem,4vw,2rem);margin:0}header p{margin:6px 0 0;color:#64748b}
+main{max-width:850px;margin:18px auto;padding:0 12px 30px}.card{background:white;border:1px solid #dbeafe;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 8px 24px #1e3a8a0b}
+h2{font-size:1.16rem;margin:0 0 12px}label{font-weight:700;display:block;margin:10px 0 5px}input{font:inherit;width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px}
+button{font:inherit;font-weight:750;padding:12px 15px;border:0;border-radius:11px;background:#2563eb;color:#fff;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.secondary{background:#e2e8f0;color:#172554}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:130px}.hidden{display:none!important}.small{font-size:.9rem;color:#64748b;line-height:1.5}.notice{padding:11px 13px;background:#eff6ff;border-radius:10px;line-height:1.5;margin:10px 0}.error{color:#b91c1c}.success{color:#15803d}.roomcode{font-size:1.7rem;letter-spacing:.13em;color:#2563eb;font-weight:900}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:.78rem;font-weight:850}
+.players{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.player{padding:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;display:flex;justify-content:space-between;gap:8px;align-items:center;overflow-wrap:anywhere}.player.me{background:#eff6ff;border-color:#60a5fa}.score{font-weight:900;white-space:nowrap}.progress{height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin:10px 0 15px}.progress div{height:100%;background:#2563eb;transition:width .2s}#questionText{font-size:1.18rem;font-weight:800;line-height:1.5}.option{display:block;width:100%;text-align:left;margin:9px 0;background:#f8fafc;color:#172554;border:2px solid #e2e8f0;padding:13px 14px}.option:hover:not(:disabled){background:#eff6ff;border-color:#60a5fa}.option.correct{background:#dcfce7;border-color:#16a34a}.option.wrong{background:#fee2e2;border-color:#ef4444}.winner{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px;margin:12px 0}.footer{text-align:center;color:#64748b;font-size:.82rem;padding:10px}code{overflow-wrap:anywhere}
+@media(max-width:480px){.card{padding:14px}.players{grid-template-columns:1fr}.row{align-items:stretch}.row>*{width:100%}}
+</style>
+</head>
+<body>
+<header><h1>⚡ Class 9 Battle Quiz</h1><p>Up to 4 players · First correct answer gets the point · 30 MCQs</p></header>
+<main>
+<section class="card" id="setup">
+<h2>🎮 Create or join a room</h2>
+<p class="small">Everyone needs to open the same hosted website link. Online play across different phones needs your Firebase database details (one-time setup below).</p>
+<label for="name">Your name</label><input id="name" maxlength="18" autocomplete="nickname" placeholder="Enter your player name">
+<div class="row" style="margin-top:12px">
+<button id="create">Create room</button>
+<div><label for="roomInput" style="margin-top:0">Room code</label><input id="roomInput" maxlength="5" placeholder="ABCDE" autocapitalize="characters"></div>
+<button id="join">Join room</button>
+</div>
+<p id="setupMsg" class="small" role="status"></p>
+<div class="notice small"><b>Topics:</b> Work and Energy · Reproduction: How Life Continues · Mathematical Propositions and Their Converse</div>
+</section>
+
+<section class="card hidden" id="lobby">
+<div class="row"><div><h2>Room lobby</h2><div class="small">Share this room code with your friends</div><div id="code" class="roomcode">-----</div></div><div><span class="pill" id="status">WAITING</span><p id="lobbyHint" class="small">Waiting for players…</p></div></div>
+<h2 style="margin-top:16px">Players <span id="count">0/4</span></h2><div id="lobbyPlayers" class="players"></div>
+<p class="small">The room creator starts the quiz. Maximum 4 players.</p><button id="start" class="hidden">Start 30-question quiz</button> <button id="leave" class="secondary">Leave room</button>
+</section>
+
+<section class="card hidden" id="quiz">
+<div class="row" style="align-items:center"><div><span class="pill" id="topic">TOPIC</span></div><div style="text-align:right"><b id="qcount">Question 1 of 30</b></div></div>
+<div class="progress"><div id="bar" style="width:3.33%"></div></div>
+<p id="questionText"></p><div id="options"></div><div id="feedback" class="notice hidden" aria-live="polite"></div>
+<h2 style="margin-top:20px">Live scoreboard</h2><div id="scores" class="players"></div>
+</section>
+
+<section class="card hidden" id="results"><h2>🏆 Final results</h2><p id="resultMsg"></p><div id="finalScores" class="players"></div><button id="again" style="margin-top:14px">Back to start</button></section>
+
+<section class="card" id="help">
+<h2>One-time setup for online multiplayer</h2>
+<ol class="small">
+<li>Open <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase Console</a> and create a project.</li>
+<li>Open <b>Build → Realtime Database</b> and create a database.</li>
+<li>In Project settings, add a Web app and copy its config into <code>FIREBASE_CONFIG</code> near the bottom of this file.</li>
+<li>Set up secure database rules/authentication before public use. Do not leave a public database openly writable.</li>
+<li>Host this HTML file using GitHub Pages, Netlify, or another HTTPS host; send that same URL to all four players.</li>
+</ol>
+<p class="small">If Firebase is not configured, this page will explain that online rooms are unavailable; it will not pretend different devices are connected. Use a private Firebase project and secure it before sharing widely.</p>
+</section>
+<div class="footer">Study together. Answer quickly. Have fun!</div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PASTE_YOUR_PROJECT",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_YOUR_SENDER_ID",
+  appId: "PASTE_YOUR_APP_ID"
+};
+
+const BANK = [
+["Work and Energy","A 10 N force moves an object 3 m in the direction of the force. Work done is:",["3 J","13 J","30 J","0 J"],2,"Work = force × displacement = 10 × 3 = 30 J."],
+["Reproduction: How Life Continues","Which process produces offspring from one parent without fusion of gametes?",["Sexual reproduction","Asexual reproduction","Fertilisation","Pollination"],1,"Asexual reproduction does not involve fusion of gametes."],
+["Propositions and Converse","The converse of “If a number is divisible by 4, then it is even” is:",["If a number is even, then it is divisible by 4.","If it is not even, it is not divisible by 4.","If a number is divisible by 4, then it is odd.","Every even number is prime."],0,"A converse swaps the hypothesis and conclusion."],
+["Work and Energy","A student holds a schoolbag still for one minute. Work done on the bag by the upward supporting force is:",["Positive","Negative","Zero","Cannot be measured"],2,"The bag has no displacement, so work done by that force is zero."],
+["Reproduction: How Life Continues","Yeast commonly reproduces asexually by:",["Seeds","Budding","Pollination","Fragmentation of leaves"],1,"A small bud grows on the parent yeast cell."],
+["Propositions and Converse","The converse of “If a figure is a square, then it has four sides” is:",["If it has four sides, it is a square.","If it is not a square, it has no sides.","If it has four sides, then it is a square.","All four-sided figures are equal."],2,"The converse reverses the if-part and then-part; this converse is not always true."],
+["Work and Energy","What is the SI unit of energy?",["Watt","Newton","Joule","Pascal"],2,"Energy is measured in joules (J)."],
+["Reproduction: How Life Continues","In a flowering plant, pollen grains are produced in the:",["Stigma","Ovary","Anther","Sepal"],2,"The anther is part of the stamen and produces pollen."],
+["Propositions and Converse","In “If a triangle is equilateral, then all its sides are equal,” the hypothesis is:",["All its sides are equal","The figure is a triangle","The triangle is equilateral","It has three angles"],2,"The hypothesis is the part following “if”."],
+["Work and Energy","A 2 kg object moves at 3 m/s. Its kinetic energy is:",["6 J","9 J","18 J","3 J"],1,"KE = ½mv² = ½ × 2 × 3² = 9 J."],
+["Reproduction: How Life Continues","Which method is commonly used to grow a new rose plant from a stem piece?",["Cutting","Binary fission","Spore formation only","Pollination"],0,"A stem cutting can develop roots and shoots to form a new plant."],
+["Propositions and Converse","Which statement is the converse of “If it rains, the ground gets wet”?",["If the ground is wet, then it rains.","If it does not rain, the ground is wet.","If it rains, the ground is dry.","The ground is wet and it rains."],0,"The converse exchanges the condition and result."],
+["Work and Energy","If the speed of an object doubles, its kinetic energy becomes:",["Twice as much","Three times as much","Four times as much","Half as much"],2,"Kinetic energy depends on the square of speed."],
+["Reproduction: How Life Continues","Fusion of male and female gametes is called:",["Germination","Fertilisation","Budding","Regeneration"],1,"Fertilisation forms a zygote."],
+["Propositions and Converse","A proposition is a sentence that:",["Is always a question","Can be judged true or false","Is an order only","Has no meaning"],1,"A mathematical proposition is a declarative statement with a truth value."],
+["Work and Energy","A 5 kg object is lifted vertically by 2 m. Take g = 10 m/s². Work done against gravity is:",["10 J","25 J","50 J","100 J"],3,"Work = mgh = 5 × 10 × 2 = 100 J."],
+["Reproduction: How Life Continues","Which part of a flower develops into a fruit after fertilisation?",["Anther","Petal","Ovary","Stigma"],2,"The ovary generally develops into the fruit."],
+["Propositions and Converse","What is the converse of “If a number is a multiple of 10, it ends in 0”?",["If a number ends in 0, it is a multiple of 10.","If it ends in 5, it is a multiple of 10.","If it is not a multiple of 10, it ends in 0.","All numbers end in 0."],0,"Swap the condition and conclusion."],
+["Work and Energy","Which object has the greatest kinetic energy if all have the same mass?",["One moving at 2 m/s","One moving at 3 m/s","One moving at 4 m/s","One at rest"],2,"For the same mass, higher speed means higher kinetic energy."],
+["Reproduction: How Life Continues","The transfer of pollen from anther to stigma is called:",["Fertilisation","Pollination","Germination","Budding"],1,"Pollination is pollen transfer from anther to stigma."],
+["Propositions and Converse","“If a shape is a rectangle, then it has four sides.” Which is the conclusion?",["The shape is a rectangle","It has four sides","It has equal sides","It is a square"],1,"The conclusion is the part after “then”."],
+["Work and Energy","A machine does 200 J of work in 10 seconds. Its power is:",["20 W","2000 W","10 W","2 W"],0,"Power = work ÷ time = 200 ÷ 10 = 20 W."],
+["Reproduction: How Life Continues","Which is an example of vegetative propagation?",["A potato growing from an eye","A bird laying an egg","A seed forming after fertilisation","A human baby being born"],0,"Potato eyes are buds that can grow into new plants."],
+["Propositions and Converse","The converse of “If a number is divisible by 6, it is divisible by 3” is:",["If divisible by 3, then divisible by 6.","If divisible by 6, it is not divisible by 3.","If not divisible by 6, it is divisible by 3.","If a number is divisible by 6, then it is divisible by 3."],0,"The condition and conclusion are interchanged; the converse is not always true."],
+["Work and Energy","When a force acts perpendicular to the displacement, the work done by that force is:",["Maximum positive","Negative","Zero","Always 1 J"],2,"W = Fs cos θ; at 90°, cos θ = 0."],
+["Reproduction: How Life Continues","An organism formed by asexual reproduction is often genetically very similar to its parent. Such offspring are called:",["Gametes","Clones","Pollens","Zygotes"],1,"Clones are genetically very similar copies produced from one parent."],
+["Propositions and Converse","Which statement is the hypothesis in “If a number is odd, then its remainder on division by 2 is 1”?",["Its remainder is 1","The number is odd","Division by 2","The number is even"],1,"The hypothesis is the “if” part."],
+["Work and Energy","Gravitational potential energy of an object near Earth depends on:",["Mass, height and gravitational field strength","Colour only","Shape only","Time only"],0,"Near Earth, PE = mgh."],
+["Reproduction: How Life Continues","In humans, fertilisation normally occurs in the:",["Uterus","Oviduct (fallopian tube)","Ovary surface","Vagina"],1,"In humans, fertilisation usually takes place in the oviduct."],
+["Propositions and Converse","If proposition P is “a figure is a square” and Q is “it has four equal sides and four right angles,” then “If P, then Q” is:",["P only","Q only","A conditional proposition","The converse of Q"],2,"An if–then statement is a conditional proposition."]
+];
+
+const $ = id => document.getElementById(id);
+const configured = !FIREBASE_CONFIG.apiKey.startsWith("PASTE_") && !FIREBASE_CONFIG.databaseURL.includes("PASTE_YOUR_PROJECT");
+let db=null, roomRef=null, roomCode="", playerId="", playerName="", isHost=false, roomData=null, unsubscribe=null, advancing=false, answeredQuestion=-1;
+const sections=["setup","lobby","quiz","results"];
+function show(id){sections.forEach(s=>$(s).classList.toggle("hidden",s!==id));}
+function msg(text,cls=""){ $("setupMsg").textContent=text; $("setupMsg").className="small "+cls; }
+function makeId(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);}
+function codeGen(){return Math.random().toString(36).slice(2,7).toUpperCase();}
+function shuffledQuestions(){
+ return BANK.map(item=>{let opts=item[3].map((text,i)=>({text,correct:i===item[4]}));for(let i=opts.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}return {topic:item[0],question:item[1],options:opts,explanation:item[5]};});
+}
+function connectFirebase(){
+ if(!configured || !window.firebase){msg("Online rooms are not configured yet. Add your Firebase config in the HTML file first.","error");return false;}
+ try{if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();return true;}catch(e){msg("Firebase setup error: "+e.message,"error");return false;}
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function currentPlayers(){return Object.values(roomData?.players||{}).sort((a,b)=>a.joinedAt-b.joinedAt);}
+function renderPlayers(target,scoreMode=false){
+ const list=currentPlayers();$(target).innerHTML=list.map(p=>`<div class="player ${p.id===playerId?'me':''}"><span>${escapeHtml(p.name)}${p.id===playerId?' (You)':''}</span><span class="score">${scoreMode?(p.score||0)+' pts':(p.id===roomData.hostId?'👑 Host':'Ready')}</span></div>`).join("");
+}
+function onRoom(snapshot){
+ if(!snapshot.exists()){msg("Room was removed or does not exist.","error");return;}
+ roomData=snapshot.val();
+ $("code").textContent=roomCode;$("count").textContent=Object.keys(roomData.players||{}).length+"/4";
+ $("status").textContent=roomData.status==="playing"?"PLAYING":roomData.status==="finished"?"FINISHED":"WAITING";
+ $("lobbyHint").textContent=roomData.status==="waiting"?"Waiting for players…":"Quiz in progress";
+ renderPlayers("lobbyPlayers");renderPlayers("scores",true);renderPlayers("finalScores",true);
+ $("start").classList.toggle("hidden",!(isHost&&roomData.status==="waiting"));
+ if(roomData.status==="waiting")show("lobby");
+ else if(roomData.status==="playing"){show("quiz");renderQuestion();}
+ else if(roomData.status==="finished"){show("results");renderFinal();}
+}
+function listenRoom(){
+ if(unsubscribe)roomRef.off("value",unsubscribe);
+ unsubscribe=snap=>onRoom(snap);roomRef.on("value",unsubscribe,err=>msg("Connection error: "+err.message,"error"));
+}
+async function createRoom(){
+ playerName=$("name").value.trim();if(!playerName){msg("Please enter your name.");return;}if(!connectFirebase())return;
+ playerId=makeId();roomCode=codeGen();isHost=true;
+ const players={};players[playerId]={id:playerId,name:playerName,score:0,joinedAt:Date.now()};
+ roomRef=db.ref("quizRooms/"+roomCode);
+ try{
+  await roomRef.set({hostId:playerId,status:"waiting",questionIndex:0,winnerId:null,players,questions:shuffledQuestions(),createdAt:firebase.database.ServerValue.TIMESTAMP});
+  $("roomInput").value=roomCode;show("lobby");listenRoom();
+ }catch(e){msg("Could not create room: "+e.message,"error");}
+}
+async function joinRoom(){
+ playerName=$("name").value.trim();roomCode=$("roomInput").value.trim().toUpperCase();
+ if(!playerName){msg("Please enter your name.");return;}if(!/^[A-Z0-9]{5}$/.test(roomCode)){msg("Enter the 5-character room code.");return;}if(!connectFirebase())return;
+ playerId=makeId();isHost=false;roomRef=db.ref("quizRooms/"+roomCode);
+ try{
+  const snap=await roomRef.get();if(!snap.exists()){msg("Room not found. Check the code.","error");return;}
+  const data=snap.val();if(data.status!=="waiting"){msg("This quiz has already started.","error");return;}
+  if(Object.keys(data.players||{}).length>=4){msg("This room already has 4 players.","error");return;}
+  await roomRef.child("players/"+playerId).set({id:playerId,name:playerName,score:0,joinedAt:Date.now()});
+  show("lobby");listenRoom();
+ }catch(e){msg("Could not join: "+e.message,"error");}
+}
+async function startGame(){
+ if(!isHost||!roomRef)return;
+ const snap=await roomRef.get();if(!snap.exists())return;
+ if(Object.keys(snap.val().players||{}).length<2){$("lobbyHint").textContent="Invite at least one friend before starting.";return;}
+ await roomRef.update({status:"playing",questionIndex:0,winnerId:null,answeredBy:{},lastAnswer:null});
+}
+function renderQuestion(){
+ if(!roomData||roomData.status!=="playing")return;
+ const idx=roomData.questionIndex||0;
+ if(idx>=roomData.questions.length){if(isHost)roomRef.update({status:"finished"});return;}
+ const q=roomData.questions[idx];$("topic").textContent=q.topic;$("qcount").textContent=`Question ${idx+1} of ${roomData.questions.length}`;
+ $("bar").style.width=((idx+1)/roomData.questions.length*100)+"%";$("questionText").textContent=q.question;
+ const won=roomData.winnerId;const already=answeredQuestion===idx;
+ $("options").innerHTML=q.options.map((o,i)=>`<button class="option" data-i="${i}" ${won||already?'disabled':''}>${String.fromCharCode(65+i)}. ${escapeHtml(o.text)}</button>`).join("");
+ $("options").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>submitAnswer(Number(b.dataset.i),idx)));
+ const feedback=$("feedback");feedback.classList.toggle("hidden",!won);
+ if(won){const wp=(roomData.players||{})[won];feedback.innerHTML=`<b>${escapeHtml(wp?.name||"A player")} got it first!</b> +1 point. ${escapeHtml(q.explanation||"")}<br><span class="small">Next question loading for everyone…</span>`;}
+ else if(already){feedback.classList.remove("hidden");feedback.textContent="Answer submitted. Waiting for the first correct answer…";}
+ renderPlayers("scores",true);
+}
+async function submitAnswer(choice,idx){
+ if(!roomRef||!roomData||roomData.questionIndex!==idx||roomData.winnerId||answeredQuestion===idx)return;
+ answeredQuestion=idx;
+ $("options").querySelectorAll("button").forEach(b=>b.disabled=true);
+ const q=roomData.questions[idx];const correct=q.options[choice].correct;
+ if(!correct){
+  const btn=$("options").querySelector(`[data-i="${choice}"]`);
+  if(btn){btn.classList.add("wrong");btn.disabled=true;}
+  $("feedback").classList.remove("hidden");$("feedback").textContent="Not quite — try another option. Other players can still earn the point.";
+  return;
+ }
+ answeredQuestion=idx;
+ try{
+  const result=await roomRef.transaction(data=>{
+   if(!data||data.status!=="playing"||data.questionIndex!==idx||data.winnerId)return;
+   if(!data.players||!data.players[playerId])return;
+   data.winnerId=playerId;data.players[playerId].score=(data.players[playerId].score||0)+1;data.lastAnswer={playerId,questionIndex:idx};
+   return data;
+  });
+  if(!result.committed)renderQuestion();
+ }catch(e){$("feedback").textContent="Could not submit answer. Check your connection.";}
+}
+let advanceTimer=null,lastWinnerKey="";
+function scheduleAdvance(){
+ if(!roomData||roomData.status!=="playing"||!roomData.winnerId)return;
+ const key=roomData.questionIndex+":"+roomData.winnerId;
+ if(key===lastWinnerKey)return;lastWinnerKey=key;
+ if(advanceTimer)clearTimeout(advanceTimer);
+ advanceTimer=setTimeout(async()=>{
+  if(!roomRef)return;
+  try{await roomRef.transaction(data=>{
+   if(!data||data.status!=="playing"||!data.winnerId||data.questionIndex!==roomData.questionIndex)return;
+   const next=data.questionIndex+1;
+   if(next>=data.questions.length){data.status="finished";data.questionIndex=next;data.winnerId=null;}
+   else{data.questionIndex=next;data.winnerId=null;data.lastAnswer=null;}
+   return data;
+  });answeredQuestion=-1;}catch(e){}
+ },1300);
+}
+function renderFinal(){
+ const list=currentPlayers().sort((a,b)=>(b.score||0)-(a.score||0));
+ const best=list[0]?.score||0;const winners=list.filter(p=>(p.score||0)===best);
+ $("resultMsg").textContent=winners.length>1?`It's a tie! ${winners.map(p=>p.name).join(" and ")} scored ${best} points.`:`${winners[0]?.name||"No one"} wins with ${best} out of 30 points!`;
+ renderPlayers("finalScores",true);
+}
+async function leaveRoom(){
+ if(advanceTimer)clearTimeout(advanceTimer);
+ if(roomRef&&playerId){try{await roomRef.child("players/"+playerId).remove();}catch(e){}}
+ if(unsubscribe&&roomRef)roomRef.off("value",unsubscribe);
+ roomRef=null;roomData=null;roomCode="";playerId="";isHost=false;answeredQuestion=-1;lastWinnerKey="";
+ show("setup");msg("");
+}
+$("create").addEventListener("click",createRoom);$("join").addEventListener("click",joinRoom);$("start").addEventListener("click",startGame);$("leave").addEventListener("click",leaveRoom);
+$("again").addEventListener("click",async()=>{await leaveRoom();});
+const oldOnRoom=onRoom;
+onRoom=function(snapshot){oldOnRoom(snapshot);scheduleAdvance();};
+$("roomInput").addEventListener("input",e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5);});
+</script>
+</body>
+</html>
